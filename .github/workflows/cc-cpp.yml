@@ -20,22 +20,31 @@ jobs:
 
     - name: Create Mock LoL Files
       run: |
-        # 1. Define the base paths
+        # 1. Define the paths
         BASE_DIR="/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks"
         FRAMEWORK_DIR="$BASE_DIR/Chromium Embedded Framework.framework"
+        LIB_DIR="$FRAMEWORK_DIR/Libraries"
         
-        # 2. Create the directories
-        mkdir -p "$FRAMEWORK_DIR/Libraries"
+        # 2. Create the folder structure
+        mkdir -p "$LIB_DIR"
         
-        # 3. Create the MAIN binary file (This fixes the 'framework not found' error)
-        # The linker looks for a file named "Chromium Embedded Framework" inside the .framework folder
-        touch "$FRAMEWORK_DIR/Chromium Embedded Framework"
+        # 3. Create a tiny C file to compile into a fake library
+        echo "void dummy() {}" > dummy.c
         
-        # 4. Create the other libraries we need for the copy step
-        touch "$FRAMEWORK_DIR/Libraries/libEGL.dylib"
-        touch "$FRAMEWORK_DIR/Libraries/libGLESv2.dylib"
+        # 4. Compile valid "dummy" binaries (x86_64) so the linker accepts them
+        # We use -dynamiclib to tell Clang to make a shared library
         
-        echo "Created mock framework structure at: $FRAMEWORK_DIR"
+        # Create the main Framework binary
+        clang -dynamiclib -arch x86_64 dummy.c -o "$FRAMEWORK_DIR/Chromium Embedded Framework"
+        
+        # Create the .dylib libraries
+        clang -dynamiclib -arch x86_64 dummy.c -o "$LIB_DIR/libEGL.dylib"
+        clang -dynamiclib -arch x86_64 dummy.c -o "$LIB_DIR/libGLESv2.dylib"
+        
+        # 5. Clean up
+        rm dummy.c
+        
+        echo "Created valid mock binaries at: $FRAMEWORK_DIR"
 
     - name: Run Make
       run: make
