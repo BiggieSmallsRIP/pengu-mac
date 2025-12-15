@@ -20,18 +20,22 @@ jobs:
 
     - name: Create Mock LoL Files
       run: |
-        # 1. Define the super-long path from your error log
-        # Note: We use the exact path seen in the failure (including the double 'League of Legends.app')
-        TARGET_DIR="/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
+        # 1. Define the base paths
+        BASE_DIR="/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks"
+        FRAMEWORK_DIR="$BASE_DIR/Chromium Embedded Framework.framework"
         
-        # 2. Create the directory
-        mkdir -p "$TARGET_DIR"
+        # 2. Create the directories
+        mkdir -p "$FRAMEWORK_DIR/Libraries"
         
-        # 3. Create dummy files so the 'cp' command succeeds
-        touch "$TARGET_DIR/libEGL.dylib"
-        touch "$TARGET_DIR/libGLESv2.dylib"
+        # 3. Create the MAIN binary file (This fixes the 'framework not found' error)
+        # The linker looks for a file named "Chromium Embedded Framework" inside the .framework folder
+        touch "$FRAMEWORK_DIR/Chromium Embedded Framework"
         
-        echo "Created mock directory and files at: $TARGET_DIR"
+        # 4. Create the other libraries we need for the copy step
+        touch "$FRAMEWORK_DIR/Libraries/libEGL.dylib"
+        touch "$FRAMEWORK_DIR/Libraries/libGLESv2.dylib"
+        
+        echo "Created mock framework structure at: $FRAMEWORK_DIR"
 
     - name: Run Make
       run: make
