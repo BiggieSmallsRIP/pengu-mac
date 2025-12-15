@@ -18,28 +18,29 @@ jobs:
     - name: Clone CEF Dependencies
       run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
 
-    - name: Nuke Makefile Dependencies
+    - name: Manually Compile (The Nuclear Option)
       run: |
-        # 1. DELETE any line containing "League" (Removes the path variables)
-        sed -i '' '/League/d' makefile
-        
-        # 2. DELETE any line containing "cp " (Removes the copy command that is crashing)
-        sed -i '' '/cp /d' makefile
+        # 1. Create a place to store object files
+        mkdir build_objects
 
-        # 3. DELETE linker flags that try to re-export the missing library
-        sed -i '' '/reexport_library/d' makefile
+        # 2. Compile all C++ files (.cc) found in src/
+        #    We ignore the Makefile and do it ourselves.
+        echo "Compiling C++ sources..."
+        find src -name "*.cc" -exec clang++ -std=c++17 -fPIC -arch x86_64 -I./ -I./src/ -fvisibility=hidden -c {} -o build_objects/{}.o \;
 
-        # 4. REPLACE the framework requirement with "undefined dynamic_lookup"
-        #    This allows the build to succeed without the game files.
-        sed -i '' 's/-framework "Chromium Embedded Framework"/-undefined dynamic_lookup/g' makefile
-        
-        echo "Makefile aggressively patched."
+        # 3. Compile the Objective-C++ file (.mm)
+        #    This handles the Mac-specific helper code.
+        echo "Compiling Objective-C++ sources..."
+        find src -name "*.mm" -exec clang++ -std=c++17 -fPIC -arch x86_64 -I./ -I./src/ -fvisibility=hidden -x objective-c++ -c {} -o build_objects/{}.o \;
 
-    - name: Run Make
-      run: make
+        # 4. Link everything into the final dynamic library
+        #    -undefined dynamic_lookup: This tells the linker to TRUST that the missing League symbols will exist at runtime.
+        #    -framework Cocoa: Required for the Mac windowing code.
+        echo "Linking..."
+        clang++ -shared -dynamiclib -arch x86_64 -undefined dynamic_lookup -framework Cocoa -o core.dylib build_objects/src/*.o build_objects/src/**/*.o
 
     - name: Archive Production Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: pengu-mac-client
-        path: PenguLoader.app/
+        path: core.dylib
