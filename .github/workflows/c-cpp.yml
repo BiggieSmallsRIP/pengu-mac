@@ -2,9 +2,9 @@ name: Build macOS Client
 
 on:
   push:
-    branches: [ "main" ]      # FIXED: Changed master to main
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]      # FIXED: Changed master to main
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -16,19 +16,26 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Clone CEF Dependencies
-      # We verify the folder exists after cloning to be safe
+      run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
+
+    - name: Patch Makefile (Force Build)
       run: |
-        git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
-        ls -R include
+        # 1. Delete the line that tries to copy files from the missing Game folder
+        sed -i '' '/cp \/Applications\/League/d' makefile
+
+        # 2. Remove the hardcoded Framework path which doesn't exist on the runner
+        sed -i '' 's|-F "/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks"||g' makefile
+
+        # 3. Tell the linker to ignore missing CEF symbols (they will be found at runtime)
+        sed -i '' 's|-framework "Chromium Embedded Framework"|-undefined dynamic_lookup|g' makefile
+        
+        echo "Makefile patched."
 
     - name: Run Make
-      # We explicitly look for the Makefile to ensure we are in the right spot
-      run: |
-        ls -la
-        make
+      run: make
 
     - name: Archive Production Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: pengu-mac-client
-        path: PenguLoader.app
+        path: PenguLoader.app/
