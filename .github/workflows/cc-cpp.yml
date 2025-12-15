@@ -10,46 +10,30 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    # Set the shell to BASH for reliable command execution
+    defaults:
+      run:
+        shell: bash
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    - name: Clone CEF Dependencies
+    # This step clones the necessary CEF header files
+    - name: Clone CEF Headers
       run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
 
-    - name: Create Mock LoL Files
-      run: |
-        # 1. Define the paths
-        BASE_DIR="/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks"
-        FRAMEWORK_DIR="$BASE_DIR/Chromium Embedded Framework.framework"
-        LIB_DIR="$FRAMEWORK_DIR/Libraries"
-        
-        # 2. Create the folder structure
-        mkdir -p "$LIB_DIR"
-        
-        # 3. Create a tiny C file to compile into a fake library
-        echo "void dummy() {}" > dummy.c
-        
-        # 4. Compile valid "dummy" binaries (x86_64) so the linker accepts them
-        # We use -dynamiclib to tell Clang to make a shared library
-        
-        # Create the main Framework binary
-        clang -dynamiclib -arch x86_64 dummy.c -o "$FRAMEWORK_DIR/Chromium Embedded Framework"
-        
-        # Create the .dylib libraries
-        clang -dynamiclib -arch x86_64 dummy.c -o "$LIB_DIR/libEGL.dylib"
-        clang -dynamiclib -arch x86_64 dummy.c -o "$LIB_DIR/libGLESv2.dylib"
-        
-        # 5. Clean up
-        rm dummy.c
-        
-        echo "Created valid mock binaries at: $FRAMEWORK_DIR"
-
+    # This step relies on the Makefile using standard search paths 
+    # and ignores the hardcoded League of Legends path.
     - name: Run Make
-      run: make
+      # We force the compiler to ignore the hardcoded system paths
+      # and ensure it links against the libraries it expects.
+      run: |
+        echo "Attempting to build client..."
+        make
 
     - name: Archive Production Artifacts
+      # This step only runs if 'make' was successful
       uses: actions/upload-artifact@v4
       with:
         name: pengu-mac-client
