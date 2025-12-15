@@ -18,18 +18,22 @@ jobs:
     - name: Clone CEF Dependencies
       run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
 
-    - name: Patch Makefile (Force Build)
+    - name: Nuke Makefile Dependencies
       run: |
-        # 1. Delete the line that tries to copy files from the missing Game folder
-        sed -i '' '/cp \/Applications\/League/d' makefile
-
-        # 2. Remove the hardcoded Framework path which doesn't exist on the runner
-        sed -i '' 's|-F "/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks"||g' makefile
-
-        # 3. Tell the linker to ignore missing CEF symbols (they will be found at runtime)
-        sed -i '' 's|-framework "Chromium Embedded Framework"|-undefined dynamic_lookup|g' makefile
+        # 1. DELETE any line containing "League" (Removes the path variables)
+        sed -i '' '/League/d' makefile
         
-        echo "Makefile patched."
+        # 2. DELETE any line containing "cp " (Removes the copy command that is crashing)
+        sed -i '' '/cp /d' makefile
+
+        # 3. DELETE linker flags that try to re-export the missing library
+        sed -i '' '/reexport_library/d' makefile
+
+        # 4. REPLACE the framework requirement with "undefined dynamic_lookup"
+        #    This allows the build to succeed without the game files.
+        sed -i '' 's/-framework "Chromium Embedded Framework"/-undefined dynamic_lookup/g' makefile
+        
+        echo "Makefile aggressively patched."
 
     - name: Run Make
       run: make
