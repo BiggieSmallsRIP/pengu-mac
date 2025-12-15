@@ -10,31 +10,29 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    # Set the shell to BASH for reliable command execution
-    defaults:
-      run:
-        shell: bash
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    # This step clones the necessary CEF header files
-    - name: Clone CEF Headers
+    - name: Clone CEF Dependencies
       run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
 
-    # This step relies on the Makefile using standard search paths 
-    # and ignores the hardcoded League of Legends path.
-    - name: Run Make
-      # We force the compiler to ignore the hardcoded system paths
-      # and ensure it links against the libraries it expects.
+    - name: Compile Directly (No Makefile)
       run: |
-        echo "Attempting to build client..."
-        make
+        # This command finds every source file recursively and compiles it into the dylib.
+        # -undefined dynamic_lookup: This is the magic flag that ignores the missing Game files.
+        
+        clang++ -arch x86_64 -shared -std=c++17 -fPIC \
+          -undefined dynamic_lookup \
+          -I./ -I./include \
+          -framework Cocoa -framework AppKit \
+          -o core.dylib \
+          $(find src -name "*.cc") \
+          $(find src -name "*.mm")
 
     - name: Archive Production Artifacts
-      # This step only runs if 'make' was successful
       uses: actions/upload-artifact@v4
       with:
         name: pengu-mac-client
-        path: PenguLoader.app/
+        path: core.dylib
