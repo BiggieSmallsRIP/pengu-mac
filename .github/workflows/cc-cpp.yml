@@ -2,9 +2,9 @@ name: Build macOS Client
 
 on:
   push:
-    branches: [ "main" ]      # Corrected branch from master to main
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]      # Corrected branch from master to main
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -18,13 +18,20 @@ jobs:
     - name: Clone CEF Dependencies
       run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
 
-    # 🚨 CRITICAL FIX: Create the missing dependency directory structure
-    - name: Create League of Legends Directory Structure
+    - name: Create Mock LoL Files
       run: |
-        # Create the full path that the Makefile is searching for
-        mkdir -p "/Applications/League of Legends.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries/"
-        echo "Created mock dependency structure."
-        # Note: In most projects, creating the path is enough to prevent failure.
+        # 1. Define the super-long path from your error log
+        # Note: We use the exact path seen in the failure (including the double 'League of Legends.app')
+        TARGET_DIR="/Applications/League of Legends.app/Contents/LoL/League of Legends.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
+        
+        # 2. Create the directory
+        mkdir -p "$TARGET_DIR"
+        
+        # 3. Create dummy files so the 'cp' command succeeds
+        touch "$TARGET_DIR/libEGL.dylib"
+        touch "$TARGET_DIR/libGLESv2.dylib"
+        
+        echo "Created mock directory and files at: $TARGET_DIR"
 
     - name: Run Make
       run: make
