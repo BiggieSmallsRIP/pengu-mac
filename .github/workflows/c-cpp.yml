@@ -1,0 +1,29 @@
+name: Build macOS Client
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: Clone CEF Dependencies
+      run: git clone https://github.com/nomi-san/cef-include -b 91.1.22-mac include
+
+    - name: Run Make
+      run: make
+
+    - name: Archive Production Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: pengu-mac-client
+        path: |
+          PenguLoader.app/
